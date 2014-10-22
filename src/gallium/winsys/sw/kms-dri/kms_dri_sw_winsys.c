@@ -310,6 +310,7 @@ kms_sw_displaytarget_get_handle(struct sw_winsys *winsys,
 {
    struct kms_sw_winsys *kms_sw = kms_sw_winsys(winsys);
    struct kms_sw_displaytarget *kms_sw_dt = kms_sw_displaytarget(dt);
+   int fd;
 
    switch(whandle->type) {
    case DRM_API_HANDLE_TYPE_KMS:
@@ -319,8 +320,9 @@ kms_sw_displaytarget_get_handle(struct sw_winsys *winsys,
       return TRUE;
    case DRM_API_HANDLE_TYPE_FD:
       if (!drmPrimeHandleToFD(kms_sw->fd, kms_sw_dt->handle,
-                             DRM_CLOEXEC, (int*)&whandle->handle)) {
+                             DRM_CLOEXEC, &fd)) {
          whandle->stride = kms_sw_dt->stride;
+         whandle->handle = fd;
          whandle->offset = 0;
          return TRUE;
       }
