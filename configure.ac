@@ -1142,7 +1142,7 @@ AM_CONDITIONAL(HAVE_SHARED_GLAPI, test "x$enable_shared_glapi" = xyes)
 # Build the pipe-drivers as separate libraries/modules.
 # Do not touch this unless you know what you are doing.
 # XXX: Expose via configure option ?
-enable_shared_pipe_drivers=yes
+enable_shared_pipe_drivers=no
 
 dnl
 dnl Driver specific build directories
