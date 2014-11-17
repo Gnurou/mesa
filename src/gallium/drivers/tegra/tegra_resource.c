@@ -47,6 +47,23 @@ tegra_resource_create(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	struct tegra_resource *resource;
 
+	debug_printf("> %s(pscreen=%p, template=%p)\n", __func__, pscreen,
+		     template);
+	/*
+	debug_printf("  template: %p\n", template);
+	debug_printf("    target: %u\n", template->target);
+	debug_printf("    format: %u\n", template->format);
+	debug_printf("    width: %u\n", template->width0);
+	debug_printf("    height: %u\n", template->height0);
+	debug_printf("    depth: %u\n", template->depth0);
+	debug_printf("    array_size: %u\n", template->array_size);
+	debug_printf("    last_level: %u\n", template->last_level);
+	debug_printf("    nr_samples: %u\n", template->nr_samples);
+	debug_printf("    usage: %u\n", template->usage);
+	debug_printf("    bind: %x\n", template->bind);
+	debug_printf("    flags: %x\n", template->flags);
+	*/
+
 	resource = calloc(1, sizeof(*resource));
 	if (!resource)
 		return NULL;
@@ -104,10 +121,13 @@ tegra_resource_create(struct pipe_screen *pscreen,
 			goto free;
 	}
 
+	debug_printf("  gpu: %p\n", resource->gpu);
+
 	memcpy(&resource->base, resource->gpu, sizeof(*resource->gpu));
 	pipe_reference_init(&resource->base.reference, 1);
 	resource->base.screen = &screen->base;
 
+	debug_printf("< %s() = %p\n", __func__, &resource->base);
 	return &resource->base;
 
 destroy:
@@ -125,6 +145,9 @@ tegra_resource_from_handle(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	struct tegra_resource *resource;
 
+	_debug_printf("> %s(pscreen=%p, template=%p, handle=%p)\n", __func__,
+		      pscreen, template);
+
 	resource = calloc(1, sizeof(*resource));
 	if (!resource)
 		return NULL;
@@ -141,6 +164,7 @@ tegra_resource_from_handle(struct pipe_screen *pscreen,
 	pipe_reference_init(&resource->base.reference, 1);
 	resource->base.screen = &screen->base;
 
+	_debug_printf("< %s() = %p\n", __func__, &resource->base);
 	return &resource->base;
 }
 
@@ -153,6 +177,9 @@ tegra_resource_get_handle(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	boolean ret = TRUE;
 
+	debug_printf("> %s(pscreen=%p, presource=%p, handle=%p)\n", __func__,
+		     pscreen, presource, handle);
+
 	if (presource->bind & PIPE_BIND_SCANOUT) {
 		handle->handle = resource->handle;
 		handle->stride = resource->stride;
@@ -162,6 +189,7 @@ tegra_resource_get_handle(struct pipe_screen *pscreen,
 						       handle);
 	}
 
+	debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -171,8 +199,13 @@ tegra_resource_destroy(struct pipe_screen *pscreen,
 {
 	struct tegra_resource *resource = to_tegra_resource(presource);
 
+	debug_printf("> %s(pscreen=%p, presource=%p)\n", __func__, pscreen,
+		     presource);
+
 	pipe_resource_reference(&resource->gpu, NULL);
 	free(resource);
+
+	debug_printf("< %s()\n", __func__);
 }
 
 struct pipe_surface *
@@ -183,6 +216,9 @@ tegra_create_surface(struct pipe_context *pcontext,
 	struct tegra_resource *resource = to_tegra_resource(presource);
 	struct tegra_context *context = to_tegra_context(pcontext);
 	struct tegra_surface *surface;
+
+	debug_printf("> %s(pcontext=%p, presource=%p, template=%p)\n",
+		     __func__, pcontext, presource, template);
 
 	surface = calloc(1, sizeof(*surface));
 	if (!surface)
@@ -204,6 +240,8 @@ tegra_create_surface(struct pipe_context *pcontext,
 	pipe_resource_reference(&surface->base.texture, presource);
 	surface->base.context = &context->base;
 
+	debug_printf("  gpu: %p\n", surface->gpu);
+	debug_printf("< %s() = %p\n", __func__, &surface->base);
 	return &surface->base;
 }
 
@@ -213,7 +251,12 @@ tegra_surface_destroy(struct pipe_context *pcontext,
 {
 	struct tegra_surface *surface = to_tegra_surface(psurface);
 
+	debug_printf("> %s(pcontext=%p, psurface=%p)\n", __func__, pcontext,
+		     psurface);
+
 	pipe_resource_reference(&surface->base.texture, NULL);
 	pipe_surface_reference(&surface->gpu, NULL);
 	free(surface);
+
+	debug_printf("< %s()\n", __func__);
 }

@@ -29,5 +29,12 @@ struct pipe_screen *tegra_drm_screen_create(int fd);
 
 struct pipe_screen *tegra_drm_screen_create(int fd)
 {
-	return tegra_screen_create(fd);
+	struct pipe_screen *screen;
+
+	debug_printf("> %s(fd=%d)\n", __func__, fd);
+
+	screen = tegra_screen_create(fd);
+
+	debug_printf("< %s() = %p\n", __func__, screen);
+	return screen;
 }
