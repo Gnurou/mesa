@@ -27,7 +27,6 @@
 #include <stdio.h>
 
 #include <drm/tegra_drm.h>
-#include <libdrm/tegra.h>
 #include <xf86drm.h>
 
 #include "pipe/p_state.h"
@@ -71,10 +70,9 @@ tegra_resource_create(struct pipe_screen *pscreen,
 
 	/* import scanout buffers for display */
 	if (template->bind & PIPE_BIND_SCANOUT) {
-		struct drm_tegra_bo_tiling tiling;
+		struct drm_tegra_gem_set_tiling args;
 		struct winsys_handle handle;
 		boolean status;
-		size_t size;
 		int fd, err;
 
 		resource->gpu = screen->gpu->resource_create(screen->gpu,
@@ -91,7 +89,6 @@ tegra_resource_create(struct pipe_screen *pscreen,
 		if (!status)
 			goto destroy;
 
-		size = handle.stride * resource->gpu->height0;
 		resource->stride = handle.stride;
 		fd = handle.handle;
 
@@ -105,23 +102,17 @@ tegra_resource_create(struct pipe_screen *pscreen,
 
 		close(fd);
 
-		err = drm_tegra_bo_wrap(&resource->bo, screen->device,
-					resource->handle, 0, size);
+		memset(&args, 0, sizeof(args));
+		args.handle = resource->handle;
+		args.mode = DRM_TEGRA_GEM_TILING_MODE_BLOCK;
+		args.value = 4;
+
+		err = drmIoctl(screen->fd, DRM_IOCTL_TEGRA_GEM_SET_TILING,
+			       &args);
 		if (err < 0) {
-			fprintf(stderr, "failed to create buffer object: %s\n",
-				strerror(-err));
+			fprintf(stderr, "failed to set tiling parameters: %s\n",
+				strerror(errno));
 			goto destroy;
-		}
-
-		tiling.mode = DRM_TEGRA_GEM_TILING_MODE_BLOCK;
-		tiling.value = 4;
-
-		err = drm_tegra_bo_set_tiling(resource->bo, &tiling);
-		if (err < 0) {
-			fprintf(stderr,
-				"failed to set tiling for buffer object: %s\n",
-				strerror(-err));
-			goto unref;
 		}
 	} else {
 		resource->gpu = screen->gpu->resource_create(screen->gpu,
@@ -139,8 +130,6 @@ tegra_resource_create(struct pipe_screen *pscreen,
 	debug_printf("< %s() = %p\n", __func__, &resource->base);
 	return &resource->base;
 
-unref:
-	drm_tegra_bo_unref(resource->bo);
 destroy:
 	screen->gpu->resource_destroy(screen->gpu, resource->gpu);
 free:
@@ -214,7 +203,6 @@ tegra_resource_destroy(struct pipe_screen *pscreen,
 		     presource);
 
 	pipe_resource_reference(&resource->gpu, NULL);
-	drm_tegra_bo_unref(resource->bo);
 	free(resource);
 
 	debug_printf("< %s()\n", __func__);

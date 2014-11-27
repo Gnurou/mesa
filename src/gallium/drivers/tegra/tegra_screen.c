@@ -29,8 +29,6 @@
 #include <libudev.h>
 #endif
 
-#include <libdrm/tegra.h>
-
 #include "util/u_debug.h"
 
 #include "tegra/tegra_context.h"
@@ -59,7 +57,6 @@ static void tegra_screen_destroy(struct pipe_screen *pscreen)
 	debug_printf("> %s(pscreen=%p)\n", __func__, pscreen);
 
 	screen->gpu->destroy(screen->gpu);
-	drm_tegra_close(screen->device);
 	free(pscreen);
 
 	debug_printf("< %s()\n", __func__);
@@ -336,7 +333,6 @@ struct pipe_screen *
 tegra_screen_create(int fd)
 {
 	struct tegra_screen *screen;
-	int err;
 
 	debug_printf("> %s()\n", __func__);
 
@@ -345,14 +341,6 @@ tegra_screen_create(int fd)
 		return NULL;
 
 	screen->fd = fd;
-
-	err = drm_tegra_new(&screen->device, fd);
-	if (err < 0) {
-		fprintf(stderr, "failed to create Tegra context: %s\n",
-			strerror(errno));
-		free(screen);
-		return NULL;
-	}
 
 	screen->gpu_fd = tegra_open_render_node(screen->fd);
 	if (screen->gpu_fd < 0) {

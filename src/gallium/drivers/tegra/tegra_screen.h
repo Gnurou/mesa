@@ -32,8 +32,6 @@ struct tegra_screen {
 
 	struct pipe_screen *gpu;
 	int gpu_fd;
-
-	struct drm_tegra *device;
 };
 
 static inline struct tegra_screen *

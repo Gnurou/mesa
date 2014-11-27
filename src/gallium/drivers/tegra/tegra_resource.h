@@ -32,7 +32,6 @@ struct tegra_resource {
 	struct pipe_resource base;
 	struct pipe_resource *gpu;
 
-	struct drm_tegra_bo *bo;
 	uint32_t stride;
 	uint32_t handle;
 	size_t size;
