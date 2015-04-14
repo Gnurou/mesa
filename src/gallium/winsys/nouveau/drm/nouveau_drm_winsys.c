@@ -108,6 +108,7 @@ nouveau_drm_screen_create(int fd)
 	case 0xf0:
 	case 0x100:
 	case 0x110:
+	case 0x120:
 		init = nvc0_screen_create;
 		break;
 	default:
