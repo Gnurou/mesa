@@ -1183,6 +1183,9 @@ dri2CreateScreen(int screen, struct glx_display * priv)
       return NULL;
    }
 
+   /*
+   deviceName = "/dev/dri/card0";
+   ErrorMessageF("device: %s\n", deviceName);
    psc->fd = loader_open_device(deviceName);
    if (psc->fd < 0) {
       ErrorMessageF("failed to open drm device: %s\n", strerror(errno));
@@ -1199,6 +1202,10 @@ dri2CreateScreen(int screen, struct glx_display * priv)
       goto handle_error;
    }
 
+   deviceName = "/dev/dri/renderD128";
+   */
+   ErrorMessageF("device: %s\n", deviceName);
+   psc->fd = loader_open_device(deviceName);
    /* If Mesa knows about the appropriate driver for this fd, then trust it.
     * Otherwise, default to the server's value.
     */
