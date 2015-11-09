@@ -41,20 +41,20 @@ to_tegra_context(struct pipe_context *context)
 }
 
 struct pipe_context *tegra_context_create(struct pipe_screen *pscreen,
-					  void *priv);
+					  void *priv, unsigned flags);
 
 struct tegra_sampler_view {
 	struct pipe_sampler_view base;
 	struct pipe_sampler_view *gpu;
 };
 
-static INLINE struct tegra_sampler_view *
+static inline struct tegra_sampler_view *
 to_tegra_sampler_view(struct pipe_sampler_view *view)
 {
 	return (struct tegra_sampler_view *)view;
 }
 
-static INLINE struct pipe_sampler_view *
+static inline struct pipe_sampler_view *
 tegra_sampler_view_unwrap(struct pipe_sampler_view *view)
 {
 	if (!view)
@@ -71,7 +71,7 @@ struct tegra_transfer {
 	void *map;
 };
 
-static INLINE struct tegra_transfer *
+static inline struct tegra_transfer *
 to_tegra_transfer(struct pipe_transfer *transfer)
 {
 	return (struct tegra_transfer *)transfer;

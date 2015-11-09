@@ -25,6 +25,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 
+#include <sys/stat.h>
+
 #ifdef HAVE_LIBUDEV
 #include <libudev.h>
 #endif
@@ -142,22 +144,6 @@ tegra_fence_reference(struct pipe_screen *pscreen,
 	screen->gpu->fence_reference(screen->gpu, ptr, fence);
 
 	debug_printf("< %s()\n", __func__);
-}
-
-static boolean
-tegra_fence_signalled(struct pipe_screen *pscreen,
-		      struct pipe_fence_handle *fence)
-{
-	struct tegra_screen *screen = to_tegra_screen(pscreen);
-	boolean ret;
-
-	debug_printf("> %s(pscreen=%p, fence=%p)\n", __func__, pscreen,
-		     fence);
-
-	ret = screen->gpu->fence_signalled(screen->gpu, fence);
-
-	debug_printf("< %s() = %d\n", __func__, ret);
-	return ret;
 }
 
 static boolean
@@ -376,7 +362,6 @@ tegra_screen_create(int fd)
 	screen->base.resource_destroy = tegra_resource_destroy;
 
 	screen->base.fence_reference = tegra_fence_reference;
-	screen->base.fence_signalled = tegra_fence_signalled;
 	screen->base.fence_finish = tegra_fence_finish;
 
 	debug_printf("< %s() = %p\n", __func__, &screen->base);

@@ -541,18 +541,17 @@ tegra_set_sampler_views(struct pipe_context *pcontext,
 }
 
 static void
-tegra_set_shader_resources(struct pipe_context *pcontext,
-			   unsigned start,
-			   unsigned count,
-			   struct pipe_surface **resources)
+tegra_set_shader_images(struct pipe_context *pcontext, unsigned shader,
+			unsigned start, unsigned count,
+			struct pipe_image_view **views)
 {
 	struct tegra_context *context = to_tegra_context(pcontext);
 
-	debug_printf("> %s(pcontext=%p, startt=%u, count=%u, resources=%p)\n",
-		     __func__, pcontext, start, count, resources);
+	debug_printf("> %s(pcontext=%p, shader=%u, start=%u, count=%u, views=%p)\n",
+		     __func__, pcontext, shader, start, count, views);
 
-	context->gpu->set_shader_resources(context->gpu, start, count,
-					   resources);
+	context->gpu->set_shader_images(context->gpu, shader, start, count,
+					views);
 
 	debug_printf("< %s()\n", __func__);
 }
@@ -869,18 +868,19 @@ tegra_transfer_inline_write(struct pipe_context *pcontext,
 }
 
 struct pipe_context *
-tegra_context_create(struct pipe_screen *pscreen, void *priv)
+tegra_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	struct tegra_context *context;
 
-	debug_printf("> %s(pscreen=%p, priv=%p)\n", __func__, pscreen, priv);
+	debug_printf("> %s(pscreen=%p, priv=%p, flags=%x)\n", __func__,
+		     pscreen, priv, flags);
 
 	context = calloc(1, sizeof(*context));
 	if (!context)
 		return NULL;
 
-	context->gpu = screen->gpu->context_create(screen->gpu, priv);
+	context->gpu = screen->gpu->context_create(screen->gpu, priv, flags);
 	if (!context->gpu) {
 		debug_error("failed to create GPU context\n");
 		free(context);
@@ -933,7 +933,7 @@ tegra_context_create(struct pipe_screen *pscreen, void *priv)
 	context->base.set_viewport_states = tegra_set_viewport_states;
 	context->base.set_sampler_views = tegra_set_sampler_views;
 
-	context->base.set_shader_resources = tegra_set_shader_resources;
+	context->base.set_shader_images = tegra_set_shader_images;
 	context->base.set_vertex_buffers = tegra_set_vertex_buffers;
 	context->base.set_index_buffer = tegra_set_index_buffer;
 

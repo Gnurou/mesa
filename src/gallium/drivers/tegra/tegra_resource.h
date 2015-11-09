@@ -37,13 +37,13 @@ struct tegra_resource {
 	size_t size;
 };
 
-static INLINE struct tegra_resource *
+static inline struct tegra_resource *
 to_tegra_resource(struct pipe_resource *resource)
 {
 	return (struct tegra_resource *)resource;
 }
 
-static INLINE struct pipe_resource *
+static inline struct pipe_resource *
 tegra_resource_unwrap(struct pipe_resource *resource)
 {
 	if (!resource)
@@ -72,13 +72,13 @@ struct tegra_surface {
 	struct pipe_surface *gpu;
 };
 
-static INLINE struct tegra_surface *
+static inline struct tegra_surface *
 to_tegra_surface(struct pipe_surface *surface)
 {
 	return (struct tegra_surface *)surface;
 }
 
-static INLINE struct pipe_surface *
+static inline struct pipe_surface *
 tegra_surface_unwrap(struct pipe_surface *surface)
 {
 	if (!surface)
