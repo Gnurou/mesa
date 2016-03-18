@@ -543,15 +543,15 @@ tegra_set_sampler_views(struct pipe_context *pcontext,
 static void
 tegra_set_shader_images(struct pipe_context *pcontext, unsigned shader,
 			unsigned start, unsigned count,
-			struct pipe_image_view **views)
+			struct pipe_image_view *images)
 {
 	struct tegra_context *context = to_tegra_context(pcontext);
 
-	debug_printf("> %s(pcontext=%p, shader=%u, start=%u, count=%u, views=%p)\n",
-		     __func__, pcontext, shader, start, count, views);
+	debug_printf("> %s(pcontext=%p, shader=%u, start=%u, count=%u, images=%p)\n",
+		     __func__, pcontext, shader, start, count, images);
 
 	context->gpu->set_shader_images(context->gpu, shader, start, count,
-					views);
+					images);
 
 	debug_printf("< %s()\n", __func__);
 }

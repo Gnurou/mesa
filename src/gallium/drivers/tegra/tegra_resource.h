@@ -58,11 +58,13 @@ tegra_resource_create(struct pipe_screen *pscreen,
 struct pipe_resource *
 tegra_resource_from_handle(struct pipe_screen *pscreen,
 			   const struct pipe_resource *template,
-			   struct winsys_handle *handle);
+			   struct winsys_handle *handle,
+			   unsigned usage);
 boolean
 tegra_resource_get_handle(struct pipe_screen *pscreen,
 			  struct pipe_resource *resource,
-			  struct winsys_handle *handle);
+			  struct winsys_handle *handle,
+			  unsigned usage);
 void
 tegra_resource_destroy(struct pipe_screen *pscreen,
 		       struct pipe_resource *resource);

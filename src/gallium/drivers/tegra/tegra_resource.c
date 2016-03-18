@@ -70,6 +70,7 @@ tegra_resource_create(struct pipe_screen *pscreen,
 
 	/* import scanout buffers for display */
 	if (template->bind & PIPE_BIND_SCANOUT) {
+		unsigned usage = PIPE_HANDLE_USAGE_READ;
 		struct drm_tegra_gem_set_tiling args;
 		struct winsys_handle handle;
 		boolean status;
@@ -85,7 +86,7 @@ tegra_resource_create(struct pipe_screen *pscreen,
 
 		status = screen->gpu->resource_get_handle(screen->gpu,
 							  resource->gpu,
-							  &handle);
+							  &handle, usage);
 		if (!status)
 			goto destroy;
 
@@ -140,21 +141,22 @@ free:
 struct pipe_resource *
 tegra_resource_from_handle(struct pipe_screen *pscreen,
 			   const struct pipe_resource *template,
-			   struct winsys_handle *handle)
+			   struct winsys_handle *handle,
+			   unsigned usage)
 {
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	struct tegra_resource *resource;
 
-	_debug_printf("> %s(pscreen=%p, template=%p, handle=%p)\n", __func__,
-		      pscreen, template);
+	_debug_printf("> %s(pscreen=%p, template=%p, handle=%p, usage=%u)\n",
+		      __func__, pscreen, template, handle, usage);
 
 	resource = calloc(1, sizeof(*resource));
 	if (!resource)
 		return NULL;
 
 	resource->gpu = screen->gpu->resource_from_handle(screen->gpu,
-							  template,
-							  handle);
+							  template, handle,
+							  usage);
 	if (!resource->gpu) {
 		free(resource);
 		return NULL;
@@ -171,14 +173,15 @@ tegra_resource_from_handle(struct pipe_screen *pscreen,
 boolean
 tegra_resource_get_handle(struct pipe_screen *pscreen,
 			  struct pipe_resource *presource,
-			  struct winsys_handle *handle)
+			  struct winsys_handle *handle,
+			  unsigned usage)
 {
 	struct tegra_resource *resource = to_tegra_resource(presource);
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	boolean ret = TRUE;
 
-	debug_printf("> %s(pscreen=%p, presource=%p, handle=%p)\n", __func__,
-		     pscreen, presource, handle);
+	debug_printf("> %s(pscreen=%p, presource=%p, handle=%p, usage=%u)\n",
+		     __func__, pscreen, presource, handle, usage);
 
 	if (presource->bind & PIPE_BIND_SCANOUT) {
 		handle->handle = resource->handle;
@@ -186,7 +189,7 @@ tegra_resource_get_handle(struct pipe_screen *pscreen,
 	} else {
 		ret = screen->gpu->resource_get_handle(screen->gpu,
 						       resource->gpu,
-						       handle);
+						       handle, usage);
 	}
 
 	debug_printf("< %s() = %d\n", __func__, ret);
