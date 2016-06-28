@@ -47,6 +47,8 @@ vdp_imp_device_create_x11(Display *display, int screen, VdpDevice *device,
    vlVdpDevice *dev = NULL;
    VdpStatus ret;
 
+   VDPAU_MSG(VDPAU_TRACE, "> %s(display=%p, ...)\n", __func__, display);
+
    if (!(display && device && get_proc_address))
       return VDP_STATUS_INVALID_POINTER;
 
@@ -69,6 +71,7 @@ vdp_imp_device_create_x11(Display *display, int screen, VdpDevice *device,
    if (!dev->vscreen)
       dev->vscreen = vl_dri2_screen_create(display, screen);
    if (!dev->vscreen) {
+      VDPAU_MSG(VDPAU_TRACE, "failed to create screen\n");
       ret = VDP_STATUS_RESOURCES;
       goto no_vscreen;
    }
@@ -146,6 +149,7 @@ no_vscreen:
 no_dev:
    vlDestroyHTAB();
 no_htab:
+   VDPAU_MSG(VDPAU_TRACE, "< %s() = %d\n", __func__, ret);
    return ret;
 }
 

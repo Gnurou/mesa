@@ -386,6 +386,8 @@ vl_dri2_screen_create(Display *display, int screen)
    if (!device_name)
       goto free_connect;
    memcpy(device_name, xcb_dri2_connect_device_name(connect), device_name_length);
+   extern int printf(const char *fmt, ...);
+   printf("opening device %s\n", device_name);
    fd = loader_open_device(device_name);
    free(device_name);
 
