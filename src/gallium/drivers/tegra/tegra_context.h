@@ -40,8 +40,9 @@ to_tegra_context(struct pipe_context *context)
 	return (struct tegra_context *)context;
 }
 
-struct pipe_context *tegra_context_create(struct pipe_screen *pscreen,
-					  void *priv, unsigned flags);
+struct pipe_context *
+tegra_screen_context_create(struct pipe_screen *pscreen, void *priv,
+			    unsigned int flags);
 
 struct tegra_sampler_view {
 	struct pipe_sampler_view base;

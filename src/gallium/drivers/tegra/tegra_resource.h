@@ -52,23 +52,6 @@ tegra_resource_unwrap(struct pipe_resource *resource)
 	return to_tegra_resource(resource)->gpu;
 }
 
-struct pipe_resource *
-tegra_resource_create(struct pipe_screen *pscreen,
-		      const struct pipe_resource *template);
-struct pipe_resource *
-tegra_resource_from_handle(struct pipe_screen *pscreen,
-			   const struct pipe_resource *template,
-			   struct winsys_handle *handle,
-			   unsigned usage);
-boolean
-tegra_resource_get_handle(struct pipe_screen *pscreen,
-			  struct pipe_resource *resource,
-			  struct winsys_handle *handle,
-			  unsigned usage);
-void
-tegra_resource_destroy(struct pipe_screen *pscreen,
-		       struct pipe_resource *resource);
-
 struct tegra_surface {
 	struct pipe_surface base;
 	struct pipe_surface *gpu;
@@ -88,13 +71,5 @@ tegra_surface_unwrap(struct pipe_surface *surface)
 
 	return to_tegra_surface(surface)->gpu;
 }
-
-struct pipe_surface *
-tegra_create_surface(struct pipe_context *pcontext,
-		     struct pipe_resource *presource,
-		     const struct pipe_surface *template);
-void
-tegra_surface_destroy(struct pipe_context *pcontext,
-		      struct pipe_surface *psurface);
 
 #endif /* TEGRA_RESOURCE_H */

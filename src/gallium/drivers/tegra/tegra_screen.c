@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdio.h>
 
 #include <sys/stat.h>
@@ -31,26 +32,19 @@
 #include <libudev.h>
 #endif
 
+#include <tegra_drm.h>
+#include <xf86drm.h>
+
+#include "pipe/p_state.h"
 #include "util/u_debug.h"
 
+#include "state_tracker/drm_driver.h"
+
 #include "tegra/tegra_context.h"
-#include "tegra/tegra_resource.h"
 #include "tegra/tegra_screen.h"
 
 /* TODO: obtain from include file */
 struct pipe_screen *nouveau_drm_screen_create(int fd);
-
-static const char *
-tegra_get_name(struct pipe_screen *pscreen)
-{
-	return "tegra";
-}
-
-static const char *
-tegra_get_vendor(struct pipe_screen *pscreen)
-{
-	return "tegra";
-}
 
 static void tegra_screen_destroy(struct pipe_screen *pscreen)
 {
@@ -62,6 +56,27 @@ static void tegra_screen_destroy(struct pipe_screen *pscreen)
 	free(pscreen);
 
 	debug_printf("< %s()\n", __func__);
+}
+
+static const char *
+tegra_screen_get_name(struct pipe_screen *pscreen)
+{
+	return "tegra";
+}
+
+static const char *
+tegra_screen_get_vendor(struct pipe_screen *pscreen)
+{
+	return "NVIDIA";
+}
+
+static const char *
+tegra_screen_get_device_vendor(struct pipe_screen *pscreen)
+{
+	debug_printf("> %s(pscreen=%p)\n", __func__, pscreen);
+	debug_printf("< %s()\n", __func__);
+
+	return "NVIDIA";
 }
 
 static int
@@ -111,6 +126,58 @@ tegra_screen_get_shader_param(struct pipe_screen *pscreen,
 	return ret;
 }
 
+static int
+tegra_screen_get_video_param(struct pipe_screen *pscreen,
+			     enum pipe_video_profile profile,
+			     enum pipe_video_entrypoint entrypoint,
+			     enum pipe_video_cap param)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	int ret;
+
+	debug_printf("> %s(pscreen=%p, profile=%d, entrypoint=%d, param=%d)\n",
+		     __func__, pscreen, profile, entrypoint, param);
+
+	ret = screen->gpu->get_video_param(screen->gpu, profile, entrypoint,
+					   param);
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static int
+tegra_screen_get_compute_param(struct pipe_screen *pscreen,
+			       enum pipe_shader_ir ir_type,
+			       enum pipe_compute_cap param,
+			       void *retp)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	int ret;
+
+	debug_printf("> %s(pscreen=%p, ir_type=%d, param=%d, retp=%p)\n",
+		     __func__, pscreen, ir_type, param, retp);
+
+	ret = screen->gpu->get_compute_param(screen->gpu, ir_type, param,
+					     retp);
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static uint64_t
+tegra_screen_get_timestamp(struct pipe_screen *pscreen)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	uint64_t ret;
+
+	debug_printf("> %s(pscreen=%p)\n", __func__, pscreen);
+
+	ret = screen->gpu->get_timestamp(screen->gpu);
+
+	debug_printf("< %s() = %" PRIu64 "\n", __func__, ret);
+	return ret;
+}
+
 static boolean
 tegra_screen_is_format_supported(struct pipe_screen *pscreen,
 				 enum pipe_format format,
@@ -131,33 +198,36 @@ tegra_screen_is_format_supported(struct pipe_screen *pscreen,
 	return ret;
 }
 
-static void
-tegra_fence_reference(struct pipe_screen *pscreen,
-		      struct pipe_fence_handle **ptr,
-		      struct pipe_fence_handle *fence)
-{
-	struct tegra_screen *screen = to_tegra_screen(pscreen);
-
-	debug_printf("> %s(pscreen=%p, ptr=%p, fence=%p)\n", __func__,
-		     pscreen, ptr, fence);
-
-	screen->gpu->fence_reference(screen->gpu, ptr, fence);
-
-	debug_printf("< %s()\n", __func__);
-}
-
 static boolean
-tegra_fence_finish(struct pipe_screen *pscreen,
-		   struct pipe_fence_handle *fence,
-		   uint64_t timeout)
+tegra_screen_is_video_format_supported(struct pipe_screen *pscreen,
+				       enum pipe_format format,
+				       enum pipe_video_profile profile,
+				       enum pipe_video_entrypoint entrypoint)
 {
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	boolean ret;
 
-	debug_printf("> %s(pscreen=%p, fence=%p, timeout=%llu)\n", __func__,
-		     pscreen, fence, timeout);
+	debug_printf("> %s(pscreen=%p, format=%d, profile=%d, entrypoint=%d)\n",
+		     __func__, pscreen, format, profile, entrypoint);
 
-	ret = screen->gpu->fence_finish(screen->gpu, fence, timeout);
+	ret = screen->gpu->is_video_format_supported(screen->gpu, format,
+						     profile, entrypoint);
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static boolean
+tegra_screen_can_create_resource(struct pipe_screen *pscreen,
+				 const struct pipe_resource *template)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	boolean ret;
+
+	debug_printf("> %s(pscreen=%p, template=%p)\n", __func__, pscreen,
+		     template);
+
+	ret = screen->gpu->can_create_resource(screen->gpu, template);
 
 	debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
@@ -315,6 +385,337 @@ static int tegra_open_render_node(int fd)
 	return open("/dev/dri/renderD128", O_RDWR);
 }
 
+static struct pipe_resource *
+tegra_screen_resource_create(struct pipe_screen *pscreen,
+			     const struct pipe_resource *template)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	struct tegra_resource *resource;
+
+	debug_printf("> %s(pscreen=%p, template=%p)\n", __func__, pscreen,
+		     template);
+	/*
+	debug_printf("  template: %p\n", template);
+	debug_printf("    target: %u\n", template->target);
+	debug_printf("    format: %u\n", template->format);
+	debug_printf("    width: %u\n", template->width0);
+	debug_printf("    height: %u\n", template->height0);
+	debug_printf("    depth: %u\n", template->depth0);
+	debug_printf("    array_size: %u\n", template->array_size);
+	debug_printf("    last_level: %u\n", template->last_level);
+	debug_printf("    nr_samples: %u\n", template->nr_samples);
+	debug_printf("    usage: %u\n", template->usage);
+	debug_printf("    bind: %x\n", template->bind);
+	debug_printf("    flags: %x\n", template->flags);
+	*/
+
+	resource = calloc(1, sizeof(*resource));
+	if (!resource)
+		return NULL;
+
+	/* import scanout buffers for display */
+	if (template->bind & PIPE_BIND_SCANOUT) {
+		unsigned usage = PIPE_HANDLE_USAGE_READ;
+		struct drm_tegra_gem_set_tiling args;
+		struct winsys_handle handle;
+		boolean status;
+		int fd, err;
+
+		resource->gpu = screen->gpu->resource_create(screen->gpu,
+							     template);
+		if (!resource->gpu)
+			goto free;
+
+		memset(&handle, 0, sizeof(handle));
+		handle.type = DRM_API_HANDLE_TYPE_FD;
+
+		status = screen->gpu->resource_get_handle(screen->gpu,
+							  resource->gpu,
+							  &handle, usage);
+		if (!status)
+			goto destroy;
+
+		resource->stride = handle.stride;
+		fd = handle.handle;
+
+		err = drmPrimeFDToHandle(screen->fd, fd, &resource->handle);
+		if (err < 0) {
+			fprintf(stderr, "drmPrimeFDToHandle() failed: %s\n",
+				strerror(errno));
+			close(fd);
+			goto destroy;
+		}
+
+		close(fd);
+
+		memset(&args, 0, sizeof(args));
+		args.handle = resource->handle;
+		args.mode = DRM_TEGRA_GEM_TILING_MODE_BLOCK;
+		args.value = 4;
+
+		err = drmIoctl(screen->fd, DRM_IOCTL_TEGRA_GEM_SET_TILING,
+			       &args);
+		if (err < 0) {
+			fprintf(stderr, "failed to set tiling parameters: %s\n",
+				strerror(errno));
+			goto destroy;
+		}
+	} else {
+		resource->gpu = screen->gpu->resource_create(screen->gpu,
+							     template);
+		if (!resource->gpu)
+			goto free;
+	}
+
+	debug_printf("  gpu: %p\n", resource->gpu);
+
+	memcpy(&resource->base, resource->gpu, sizeof(*resource->gpu));
+	pipe_reference_init(&resource->base.reference, 1);
+	resource->base.screen = &screen->base;
+
+	debug_printf("< %s() = %p\n", __func__, &resource->base);
+	return &resource->base;
+
+destroy:
+	screen->gpu->resource_destroy(screen->gpu, resource->gpu);
+free:
+	free(resource);
+	return NULL;
+}
+
+/* XXX */
+static struct pipe_resource *
+tegra_screen_resource_create_front(struct pipe_screen *pscreen,
+				   const struct pipe_resource *template,
+				   const void *map_front_private)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	struct pipe_resource *resource;
+
+	debug_printf("> %s(pscreen=%p, template=%p, map_front_private=%p)\n",
+		     __func__, pscreen, template, map_front_private);
+
+	resource = screen->gpu->resource_create_front(screen->gpu, template,
+						      map_front_private);
+	if (resource)
+		resource->screen = pscreen;
+
+	debug_printf("< %s() = %p\n", __func__, resource);
+	return resource;
+}
+
+static struct pipe_resource *
+tegra_screen_resource_from_handle(struct pipe_screen *pscreen,
+				  const struct pipe_resource *template,
+				  struct winsys_handle *handle,
+				  unsigned usage)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	struct tegra_resource *resource;
+
+	_debug_printf("> %s(pscreen=%p, template=%p, handle=%p, usage=%u)\n",
+		      __func__, pscreen, template, handle, usage);
+
+	resource = calloc(1, sizeof(*resource));
+	if (!resource)
+		return NULL;
+
+	resource->gpu = screen->gpu->resource_from_handle(screen->gpu,
+							  template, handle,
+							  usage);
+	if (!resource->gpu) {
+		free(resource);
+		return NULL;
+	}
+
+	memcpy(&resource->base, resource->gpu, sizeof(*resource->gpu));
+	pipe_reference_init(&resource->base.reference, 1);
+	resource->base.screen = &screen->base;
+
+	_debug_printf("< %s() = %p\n", __func__, &resource->base);
+	return &resource->base;
+}
+
+/* XXX */
+static struct pipe_resource *
+tegra_screen_resource_from_user_memory(struct pipe_screen *pscreen,
+				       const struct pipe_resource *template,
+				       void *buffer)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	struct pipe_resource *resource;
+
+	debug_printf("> %s(pscreen=%p, template=%p, buffer=%p)\n", __func__,
+		     pscreen, template, buffer);
+
+	resource = screen->gpu->resource_from_user_memory(screen->gpu,
+							  template,
+							  buffer);
+	if (resource)
+		resource->screen = pscreen;
+
+	debug_printf("< %s() = %p\n", __func__, resource);
+	return resource;
+}
+
+static boolean
+tegra_screen_resource_get_handle(struct pipe_screen *pscreen,
+				 struct pipe_resource *presource,
+				 struct winsys_handle *handle,
+				 unsigned usage)
+{
+	struct tegra_resource *resource = to_tegra_resource(presource);
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	boolean ret = TRUE;
+
+	debug_printf("> %s(pscreen=%p, presource=%p, handle=%p, usage=%u)\n",
+		     __func__, pscreen, presource, handle, usage);
+
+	if (presource->bind & PIPE_BIND_SCANOUT) {
+		handle->handle = resource->handle;
+		handle->stride = resource->stride;
+	} else {
+		ret = screen->gpu->resource_get_handle(screen->gpu,
+						       resource->gpu,
+						       handle, usage);
+	}
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static void
+tegra_screen_resource_destroy(struct pipe_screen *pscreen,
+			      struct pipe_resource *presource)
+{
+	struct tegra_resource *resource = to_tegra_resource(presource);
+
+	debug_printf("> %s(pscreen=%p, presource=%p)\n", __func__, pscreen,
+		     presource);
+
+	pipe_resource_reference(&resource->gpu, NULL);
+	free(resource);
+
+	debug_printf("< %s()\n", __func__);
+}
+
+static void
+tegra_screen_flush_frontbuffer(struct pipe_screen *pscreen,
+			       struct pipe_resource *resource,
+			       unsigned int level,
+			       unsigned int layer,
+			       void *winsys_drawable_handle,
+			       struct pipe_box *box)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+
+	debug_printf("> %s(pscreen=%p, resource=%p, level=%u, layer=%u, winsys_drawable_handle=%p, box=%p)\n",
+		     __func__, pscreen, resource, level, layer,
+		     winsys_drawable_handle, box);
+
+	screen->gpu->flush_frontbuffer(screen->gpu, resource, level, layer,
+				       winsys_drawable_handle, box);
+
+	debug_printf("< %s()\n", __func__);
+}
+
+static void
+tegra_screen_fence_reference(struct pipe_screen *pscreen,
+			     struct pipe_fence_handle **ptr,
+			     struct pipe_fence_handle *fence)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+
+	debug_printf("> %s(pscreen=%p, ptr=%p, fence=%p)\n", __func__,
+		     pscreen, ptr, fence);
+
+	screen->gpu->fence_reference(screen->gpu, ptr, fence);
+
+	debug_printf("< %s()\n", __func__);
+}
+
+static boolean
+tegra_screen_fence_finish(struct pipe_screen *pscreen,
+			  struct pipe_fence_handle *fence,
+			  uint64_t timeout)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	boolean ret;
+
+	debug_printf("> %s(pscreen=%p, fence=%p, timeout=%" PRIu64 ")\n",
+		     __func__, pscreen, fence, timeout);
+
+	ret = screen->gpu->fence_finish(screen->gpu, fence, timeout);
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static int
+tegra_screen_get_driver_query_info(struct pipe_screen *pscreen,
+				   unsigned int index,
+				   struct pipe_driver_query_info *info)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	int ret;
+
+	debug_printf("> %s(pscreen=%p, index=%u, info=%p)\n", __func__,
+		     pscreen, index, info);
+
+	ret = screen->gpu->get_driver_query_info(screen->gpu, index, info);
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static int
+tegra_screen_get_driver_query_group_info(struct pipe_screen *pscreen,
+					 unsigned int index,
+					 struct pipe_driver_query_group_info *info)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	int ret;
+
+	debug_printf("> %s(pscreen=%p, index=%u, info=%p)\n", __func__,
+		     pscreen, index, info);
+
+	ret = screen->gpu->get_driver_query_group_info(screen->gpu, index,
+						       info);
+
+	debug_printf("< %s() = %d\n", __func__, ret);
+	return ret;
+}
+
+static void
+tegra_screen_query_memory_info(struct pipe_screen *pscreen,
+			       struct pipe_memory_info *info)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+
+	debug_printf("> %s(pscreen=%p, info=%p)\n", __func__, pscreen, info);
+
+	screen->gpu->query_memory_info(screen->gpu, info);
+
+	debug_printf("< %s()\n", __func__);
+}
+
+static const void *
+tegra_screen_get_compiler_options(struct pipe_screen *pscreen,
+				  enum pipe_shader_ir ir,
+				  unsigned int shader)
+{
+	struct tegra_screen *screen = to_tegra_screen(pscreen);
+	const void *options;
+
+	debug_printf("> %s(pscreen=%p, ir=%d, shader=%u)\n", __func__,
+		     pscreen, ir, shader);
+
+	options = screen->gpu->get_compiler_options(screen->gpu, ir, shader);
+
+	debug_printf("< %s() = %p\n", __func__, options);
+	return options;
+}
+
 struct pipe_screen *
 tegra_screen_create(int fd)
 {
@@ -347,23 +748,38 @@ tegra_screen_create(int fd)
 	debug_printf("GPU: %p\n", screen->gpu);
 	debug_printf("  fd: %d\n", screen->gpu_fd);
 
-	screen->base.get_name = tegra_get_name;
-	screen->base.get_vendor = tegra_get_vendor;
 	screen->base.destroy = tegra_screen_destroy;
+	screen->base.get_name = tegra_screen_get_name;
+	screen->base.get_vendor = tegra_screen_get_vendor;
+	screen->base.get_device_vendor = tegra_screen_get_device_vendor;
 	screen->base.get_param = tegra_screen_get_param;
 	screen->base.get_paramf = tegra_screen_get_paramf;
 	screen->base.get_shader_param = tegra_screen_get_shader_param;
-	screen->base.context_create = tegra_context_create;
+	screen->base.get_video_param = tegra_screen_get_video_param;
+	screen->base.get_compute_param = tegra_screen_get_compute_param;
+	screen->base.get_timestamp = tegra_screen_get_timestamp;
+	screen->base.context_create = tegra_screen_context_create;
 	screen->base.is_format_supported = tegra_screen_is_format_supported;
+	screen->base.is_video_format_supported = tegra_screen_is_video_format_supported;
+	screen->base.can_create_resource = tegra_screen_can_create_resource;
+	screen->base.resource_create = tegra_screen_resource_create;
+	screen->base.resource_create_front = tegra_screen_resource_create_front;
+	screen->base.resource_from_handle = tegra_screen_resource_from_handle;
+	screen->base.resource_from_user_memory = tegra_screen_resource_from_user_memory;
+	screen->base.resource_get_handle = tegra_screen_resource_get_handle;
+	screen->base.resource_destroy = tegra_screen_resource_destroy;
 
-	screen->base.resource_create = tegra_resource_create;
-	screen->base.resource_from_handle = tegra_resource_from_handle;
-	screen->base.resource_get_handle = tegra_resource_get_handle;
-	screen->base.resource_destroy = tegra_resource_destroy;
+	screen->base.flush_frontbuffer = tegra_screen_flush_frontbuffer;
+	screen->base.fence_reference = tegra_screen_fence_reference;
+	screen->base.fence_finish = tegra_screen_fence_finish;
 
-	screen->base.fence_reference = tegra_fence_reference;
-	screen->base.fence_finish = tegra_fence_finish;
+	screen->base.get_driver_query_info = tegra_screen_get_driver_query_info;
+	screen->base.get_driver_query_group_info = tegra_screen_get_driver_query_group_info;
+	screen->base.query_memory_info = tegra_screen_query_memory_info;
 
+	screen->base.get_compiler_options = tegra_screen_get_compiler_options;
+
+out:
 	debug_printf("< %s() = %p\n", __func__, &screen->base);
 	return &screen->base;
 }
