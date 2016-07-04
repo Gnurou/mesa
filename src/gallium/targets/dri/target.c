@@ -161,4 +161,14 @@ PUBLIC const __DRIextension **__driDriverGetExtensions_i965(void)
    return galliumdrm_driver_extensions;
 }
 #endif
+
+#if defined(GALLIUM_TEGRA)
+#if defined(DRI_TARGET)
+const __DRIextension **__driDriverGetExtensions_tegra(void);
+
+PUBLIC const __DRIextension **__driDriverGetExtensions_tegra(void)
+{
+	globalDriverAPI = &galliumdrm_driver_api;
+	return galliumdrm_driver_extensions;
+}
 #endif

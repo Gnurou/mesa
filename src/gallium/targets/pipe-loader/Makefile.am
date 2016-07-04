@@ -178,6 +178,22 @@ pipe_msm_la_LIBADD = \
 
 endif
 
+if HAVE_GALLIUM_TEGRA
+pipe_LTLIBRARIES += pipe_tegra.la
+
+pipe_tegra_la_SOURCES = pipe_tegra.c
+nodist_EXTRA_pipe_tegra_la_SOURCES = dummy.cpp
+pipe_tegra_la_LIBADD = \
+	$(PIPE_LIBS) \
+	$(top_builddir)/src/gallium/winsys/tegra/drm/libtegradrm.la \
+	$(top_builddir)/src/gallium/winsys/nouveau/drm/libnouveaudrm.la \
+	$(top_builddir)/src/gallium/drivers/tegra/libtegra.la \
+	$(top_builddir)/src/gallium/drivers/nouveau/libnouveau.la \
+	$(TEGRA_LIBS) \
+	$(NOUVEAU_LIBS) \
+	$(LIBDRM_LIBS)
+endif
+
 if HAVE_GALLIUM_SVGA
 pipe_LTLIBRARIES += pipe_vmwgfx.la
 
