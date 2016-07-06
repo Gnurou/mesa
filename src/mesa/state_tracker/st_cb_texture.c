@@ -2692,11 +2692,17 @@ st_TestProxyTexImage(struct gl_context *ctx, GLenum target,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
+   GLboolean ret;
+
+   printf("> %s(ctx=%p, target=%d, level=%d, format=%d, width=%d, height=%d, depth=%d, border=%d)\n",
+          __func__, ctx, target, level, format, width, height, depth, border);
 
    if (width == 0 || height == 0 || depth == 0) {
       /* zero-sized images are legal, and always fit! */
       return GL_TRUE;
    }
+
+   printf("  can_create_resource: %p\n", pipe->screen->can_create_resource);
 
    if (pipe->screen->can_create_resource) {
       /* Ask the gallium driver if the texture is too large */
@@ -2726,13 +2732,18 @@ st_TestProxyTexImage(struct gl_context *ctx, GLenum target,
          pt.last_level = _mesa_logbase2(MAX3(width, height, depth));
       }
 
-      return pipe->screen->can_create_resource(pipe->screen, &pt);
+      printf("  calling into driver...\n");
+      ret = pipe->screen->can_create_resource(pipe->screen, &pt);
+      printf("  done: %d\n", ret);
    }
    else {
       /* Use core Mesa fallback */
-      return _mesa_test_proxy_teximage(ctx, target, level, format,
-                                       width, height, depth, border);
+      ret = _mesa_test_proxy_teximage(ctx, target, level, format,
+                                      width, height, depth, border);
    }
+
+   printf("< %s() = %d\n", __func__, ret);
+   return ret;
 }
 
 static GLboolean

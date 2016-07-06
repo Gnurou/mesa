@@ -166,6 +166,12 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
         .create_screen = pipe_vc4_create_screen,
         .configuration = configuration_query,
     },
+    {
+        .name = "tegra",
+        .driver_name = "tegra",
+        .create_screen = pipe_tegra_create_screen,
+        .configuration = configuration_query,
+    },
 };
 #endif
 
@@ -174,6 +180,8 @@ pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd)
 {
    struct pipe_loader_drm_device *ddev = CALLOC_STRUCT(pipe_loader_drm_device);
    int vendor_id, chip_id;
+
+   printf("> %s(dev=%p, fd=%d)\n", __func__, dev, fd);
 
    if (!ddev)
       return false;
@@ -193,14 +201,18 @@ pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd)
       goto fail;
 
 #ifdef GALLIUM_STATIC_TARGETS
+   printf("driver descriptors:\n");
    for (int i = 0; i < ARRAY_SIZE(driver_descriptors); i++) {
+      printf("  %d: %s\n", i, driver_descriptors[i].name);
       if (strcmp(driver_descriptors[i].name, ddev->base.driver_name) == 0) {
          ddev->dd = &driver_descriptors[i];
          break;
       }
    }
-   if (!ddev->dd)
+   if (!ddev->dd) {
+      printf("failed to find driver descriptor\n");
       goto fail;
+   }
 #else
    ddev->lib = pipe_loader_find_module(&ddev->base, PIPE_SEARCH_DIR);
    if (!ddev->lib)
@@ -210,11 +222,14 @@ pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd)
       util_dl_get_proc_address(ddev->lib, "driver_descriptor");
 
    /* sanity check on the name */
-   if (!ddev->dd || strcmp(ddev->dd->name, ddev->base.driver_name) != 0)
+   if (!ddev->dd || strcmp(ddev->dd->name, ddev->base.driver_name) != 0) {
+      printf("failed to get driver descriptor\n");
       goto fail;
+   }
 #endif
 
    *dev = &ddev->base;
+   printf("< %s() = true\n", __func__);
    return true;
 
   fail:
@@ -223,6 +238,7 @@ pipe_loader_drm_probe_fd(struct pipe_loader_device **dev, int fd)
       util_dl_close(ddev->lib);
 #endif
    FREE(ddev);
+   printf("< %s() = false\n", __func__);
    return false;
 }
 

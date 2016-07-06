@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#undef DEBUG
+
 #include <inttypes.h>
 #include <stdlib.h>
 
@@ -28,6 +30,7 @@
 #include "util/u_inlines.h"
 
 #include "tegra/tegra_context.h"
+#include "tegra/tegra_resource.h"
 #include "tegra/tegra_screen.h"
 
 static void

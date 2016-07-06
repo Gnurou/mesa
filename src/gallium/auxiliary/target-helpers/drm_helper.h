@@ -274,8 +274,11 @@ pipe_tegra_create_screen(int fd)
 {
    struct pipe_screen *screen;
 
+   fprintf(stderr, "> %s(fd=%d)\n", __func__, fd);
+
    screen = tegra_drm_screen_create(fd);
 
+   fprintf(stderr, "< %s() = %p\n", __func__, screen);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
 

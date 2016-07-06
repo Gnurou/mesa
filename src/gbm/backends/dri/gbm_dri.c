@@ -267,7 +267,11 @@ dri_bind_extensions(struct gbm_dri_device *dri,
    int i, j, ret = 0;
    void *field;
 
+   fprintf(stderr, "> %s(dri=%p, matches=%p, extensions=%p)\n", __func__,
+           dri, matches, extensions);
+
    for (i = 0; extensions[i]; i++) {
+      fprintf(stderr, "  %s:\n", extensions[i]->name);
       for (j = 0; matches[j].name; j++) {
          if (strcmp(extensions[i]->name, matches[j].name) == 0 &&
              extensions[i]->version >= matches[j].version) {
@@ -284,6 +288,7 @@ dri_bind_extensions(struct gbm_dri_device *dri,
       }
    }
 
+   fprintf(stderr, "< %s() = %d\n", __func__, ret);
    return ret;
 }
 
@@ -386,6 +391,8 @@ dri_load_driver(struct gbm_dri_device *dri)
 {
    const __DRIextension **extensions;
 
+   fprintf(stderr, "> %s(dri=%p)\n", __func__, dri);
+
    extensions = dri_open_driver(dri);
    if (!extensions)
       return -1;
@@ -398,6 +405,7 @@ dri_load_driver(struct gbm_dri_device *dri)
 
    dri->driver_extensions = extensions;
 
+   fprintf(stderr, "< %s()\n", __func__);
    return 0;
 }
 
@@ -427,6 +435,8 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
    const __DRIextension **extensions;
    int ret = 0;
 
+   printf("> %s(dri=%p, driver_name=%s)\n", __func__, dri, driver_name);
+
    dri->base.driver_name = driver_name;
    if (dri->base.driver_name == NULL)
       return -1;
@@ -439,8 +449,10 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
 
    dri->extensions = gbm_dri_screen_extensions;
 
-   if (dri->dri2 == NULL)
+   if (dri->dri2 == NULL) {
+      printf("DRI2 not supported\n");
       return -1;
+   }
 
    if (dri->dri2->base.version >= 4) {
       dri->screen = dri->dri2->createNewScreen2(0, dri->base.base.fd,
@@ -452,8 +464,10 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
                                                dri->extensions,
                                                &dri->driver_configs, dri);
    }
-   if (dri->screen == NULL)
+   if (dri->screen == NULL) {
+      printf("failed to create DRI2 screen\n");
       return -1;
+   }
 
    extensions = dri->core->getExtensions(dri->screen);
    if (dri_bind_extensions(dri, dri_core_extensions, extensions) < 0) {
@@ -464,11 +478,13 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
    dri->lookup_image = NULL;
    dri->lookup_user_data = NULL;
 
+   printf("< %s()\n", __func__);
    return 0;
 
 free_screen:
    dri->core->destroyScreen(dri->screen);
 
+   printf("< %s() = %d\n", __func__, ret);
    return ret;
 }
 

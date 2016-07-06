@@ -1789,6 +1789,9 @@ dri2_init_screen(__DRIscreen * sPriv)
    const struct drm_conf_ret *dmabuf_ret;
    int fd;
 
+   printf("> %s(sPriv=%p)\n", __func__, sPriv);
+   printf("  fd: %d\n", sPriv->fd);
+
    screen = CALLOC_STRUCT(dri_screen);
    if (!screen)
       return NULL;
@@ -1799,14 +1802,20 @@ dri2_init_screen(__DRIscreen * sPriv)
 
    sPriv->driverPrivate = (void *)screen;
 
-   if (screen->fd < 0 || (fd = dup(screen->fd)) < 0)
+   if (screen->fd < 0 || (fd = dup(screen->fd)) < 0) {
+      printf("invalid file descriptor\n");
       goto free_screen;
+   }
 
    if (pipe_loader_drm_probe_fd(&screen->dev, fd))
       pscreen = pipe_loader_create_screen(screen->dev);
+   else
+      printf("  failed to probe fd\n");
 
-   if (!pscreen)
-       goto release_pipe;
+   if (!pscreen) {
+      printf(" failed to create screen\n");
+      goto release_pipe;
+   }
 
    throttle_ret = pipe_loader_configuration(screen->dev, DRM_CONF_THROTTLE);
    dmabuf_ret = pipe_loader_configuration(screen->dev, DRM_CONF_SHARE_FD);
@@ -1834,14 +1843,17 @@ dri2_init_screen(__DRIscreen * sPriv)
       sPriv->extensions = dri_screen_extensions;
 
    configs = dri_init_screen_helper(screen, pscreen, screen->dev->driver_name);
-   if (!configs)
+   if (!configs) {
+      printf("  failed to initialize screen helper\n");
       goto destroy_screen;
+   }
 
    screen->can_share_buffer = true;
    screen->auto_fake_front = dri_with_format(sPriv);
    screen->broken_invalidate = !sPriv->dri2.useInvalidate;
    screen->lookup_egl_image = dri2_lookup_egl_image;
 
+   printf("< %s() = %p\n", __func__, configs);
    return configs;
 
 destroy_screen:
@@ -1855,6 +1867,8 @@ release_pipe:
 
 free_screen:
    FREE(screen);
+   printf("  failed\n");
+   printf("< %s()\n", __func__);
    return NULL;
 }
 

@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#undef DEBUG
+
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -37,10 +39,12 @@
 
 #include "pipe/p_state.h"
 #include "util/u_debug.h"
+#include "util/u_inlines.h"
 
 #include "state_tracker/drm_driver.h"
 
 #include "tegra/tegra_context.h"
+#include "tegra/tegra_resource.h"
 #include "tegra/tegra_screen.h"
 
 /* TODO: obtain from include file */
@@ -85,12 +89,12 @@ tegra_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	int ret;
 
-	debug_printf("> %s(pscreen=%p, param=%d)\n", __func__, pscreen,
-		     param);
+	//debug_printf("> %s(pscreen=%p, param=%d)\n", __func__, pscreen,
+	//	     param);
 
 	ret = screen->gpu->get_param(screen->gpu, param);
 
-	debug_printf("< %s() = %d\n", __func__, ret);
+	//debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -100,12 +104,12 @@ tegra_screen_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	float ret;
 
-	debug_printf("> %s(pscreen=%p, param=%d)\n", __func__, pscreen,
-		     param);
+	//debug_printf("> %s(pscreen=%p, param=%d)\n", __func__, pscreen,
+	//	     param);
 
 	ret = screen->gpu->get_paramf(screen->gpu, param);
 
-	debug_printf("< %s() = %f\n", __func__, ret);
+	//debug_printf("< %s() = %f\n", __func__, ret);
 	return ret;
 }
 
@@ -117,12 +121,12 @@ tegra_screen_get_shader_param(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	int ret;
 
-	debug_printf("> %s(pscreen=%p, param=%d)\n", __func__, pscreen,
-		     param);
+	//debug_printf("> %s(pscreen=%p, param=%d)\n", __func__, pscreen,
+	//	     param);
 
 	ret = screen->gpu->get_shader_param(screen->gpu, shader, param);
 
-	debug_printf("< %s() = %d\n", __func__, ret);
+	//debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -135,13 +139,13 @@ tegra_screen_get_video_param(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	int ret;
 
-	debug_printf("> %s(pscreen=%p, profile=%d, entrypoint=%d, param=%d)\n",
-		     __func__, pscreen, profile, entrypoint, param);
+	//debug_printf("> %s(pscreen=%p, profile=%d, entrypoint=%d, param=%d)\n",
+	//	     __func__, pscreen, profile, entrypoint, param);
 
 	ret = screen->gpu->get_video_param(screen->gpu, profile, entrypoint,
 					   param);
 
-	debug_printf("< %s() = %d\n", __func__, ret);
+	//debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -154,13 +158,13 @@ tegra_screen_get_compute_param(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	int ret;
 
-	debug_printf("> %s(pscreen=%p, ir_type=%d, param=%d, retp=%p)\n",
-		     __func__, pscreen, ir_type, param, retp);
+	//debug_printf("> %s(pscreen=%p, ir_type=%d, param=%d, retp=%p)\n",
+	//	     __func__, pscreen, ir_type, param, retp);
 
 	ret = screen->gpu->get_compute_param(screen->gpu, ir_type, param,
 					     retp);
 
-	debug_printf("< %s() = %d\n", __func__, ret);
+	//debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -188,13 +192,13 @@ tegra_screen_is_format_supported(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	boolean ret;
 
-	debug_printf("> %s(pscreen=%p, format=%d, target=%d, sample_count=%u, usage=%x)\n",
-	       __func__, pscreen, format, target, sample_count, usage);
+	//debug_printf("> %s(pscreen=%p, format=%d, target=%d, sample_count=%u, usage=%x)\n",
+	//	       __func__, pscreen, format, target, sample_count, usage);
 
 	ret = screen->gpu->is_format_supported(screen->gpu, format, target,
 					       sample_count, usage);
 
-	debug_printf("< %s() = %d\n", __func__, ret);
+	//debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -207,13 +211,13 @@ tegra_screen_is_video_format_supported(struct pipe_screen *pscreen,
 	struct tegra_screen *screen = to_tegra_screen(pscreen);
 	boolean ret;
 
-	debug_printf("> %s(pscreen=%p, format=%d, profile=%d, entrypoint=%d)\n",
-		     __func__, pscreen, format, profile, entrypoint);
+	//debug_printf("> %s(pscreen=%p, format=%d, profile=%d, entrypoint=%d)\n",
+	//	     __func__, pscreen, format, profile, entrypoint);
 
 	ret = screen->gpu->is_video_format_supported(screen->gpu, format,
 						     profile, entrypoint);
 
-	debug_printf("< %s() = %d\n", __func__, ret);
+	//debug_printf("< %s() = %d\n", __func__, ret);
 	return ret;
 }
 
@@ -226,6 +230,11 @@ tegra_screen_can_create_resource(struct pipe_screen *pscreen,
 
 	debug_printf("> %s(pscreen=%p, template=%p)\n", __func__, pscreen,
 		     template);
+	debug_printf("  screen: %p\n", screen);
+	debug_printf("    base: %p\n", &screen->base);
+	debug_printf("      can_create_resource: %p\n", screen->base.can_create_resource);
+	debug_printf("    gpu: %p\n", screen->gpu);
+	debug_printf("      can_create_resource: %p\n", screen->gpu->can_create_resource);
 
 	ret = screen->gpu->can_create_resource(screen->gpu, template);
 
@@ -721,7 +730,8 @@ tegra_screen_create(int fd)
 {
 	struct tegra_screen *screen;
 
-	debug_printf("> %s()\n", __func__);
+	debug_printf("> %s(fd=%d)\n", __func__, fd);
+	fprintf(stderr, "> %s(fd=%d)\n", __func__, fd);
 
 	screen = calloc(1, sizeof(*screen));
 	if (!screen)
@@ -737,7 +747,9 @@ tegra_screen_create(int fd)
 		return NULL;
 	}
 
+	debug_printf("  creating GPU screen...\n");
 	screen->gpu = nouveau_drm_screen_create(screen->gpu_fd);
+	debug_printf("  done: %p\n", screen->gpu);
 	if (!screen->gpu) {
 		fprintf(stderr, "failed to create GPU screen\n");
 		close(screen->gpu_fd);
@@ -761,7 +773,11 @@ tegra_screen_create(int fd)
 	screen->base.context_create = tegra_screen_context_create;
 	screen->base.is_format_supported = tegra_screen_is_format_supported;
 	screen->base.is_video_format_supported = tegra_screen_is_video_format_supported;
-	screen->base.can_create_resource = tegra_screen_can_create_resource;
+
+	/* allow fallback implementation if GPU driver doesn't implement it */
+	if (screen->gpu->can_create_resource)
+		screen->base.can_create_resource = tegra_screen_can_create_resource;
+
 	screen->base.resource_create = tegra_screen_resource_create;
 	screen->base.resource_create_front = tegra_screen_resource_create_front;
 	screen->base.resource_from_handle = tegra_screen_resource_from_handle;
@@ -779,7 +795,6 @@ tegra_screen_create(int fd)
 
 	screen->base.get_compiler_options = tegra_screen_get_compiler_options;
 
-out:
 	debug_printf("< %s() = %p\n", __func__, &screen->base);
 	return &screen->base;
 }
