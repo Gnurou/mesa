@@ -903,6 +903,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    case 0x130:
       switch (dev->chipset) {
       case 0x130:
+      case 0x13b:
          obj_class = GP100_3D_CLASS;
          break;
       default:
